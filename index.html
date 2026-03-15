@@ -1,0 +1,764 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Baker Hughes Certificate Database</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+
+        body {
+            background: linear-gradient(135deg, #1A3F2C 0%, #0F2B1D 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        body.modal-open {
+            overflow: hidden;
+        }
+
+        .logo {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            width: 200px;
+            z-index: 1000;
+            background: rgba(255,255,255,0.1);
+            padding: 8px 12px;
+            border-radius: 8px;
+            backdrop-filter: blur(5px);
+            border: 1px solid #FFB81C;
+        }
+
+        .logo img {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+
+        .content-wrapper {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+            max-width: 1400px;
+            margin: 80px auto 0;
+            padding: 0 20px;
+        }
+
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+            width: 100%;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            color: #FFB81C;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .stats {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin: 20px 0;
+            flex-wrap: wrap;
+        }
+
+        .stat-card {
+            background: rgba(255,255,255,0.1);
+            padding: 15px 25px;
+            border-radius: 10px;
+            backdrop-filter: blur(10px);
+            border: 1px solid #FFB81C;
+            color: white;
+            text-align: center;
+            min-width: 120px;
+        }
+
+        .stat-number {
+            font-size: 2em;
+            font-weight: bold;
+            color: #FFB81C;
+        }
+
+        .search-box {
+            max-width: 600px;
+            margin: 20px auto;
+            width: 100%;
+        }
+
+        .search-box input {
+            width: 100%;
+            padding: 15px 20px;
+            border: 2px solid #FFB81C;
+            border-radius: 30px;
+            font-size: 16px;
+            background: rgba(255,255,255,0.95);
+            outline: none;
+        }
+
+        .filters {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin: 20px 0;
+            flex-wrap: wrap;
+        }
+
+        .filter-btn {
+            padding: 10px 20px;
+            border: 2px solid #FFB81C;
+            border-radius: 20px;
+            background: transparent;
+            color: white;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: 600;
+        }
+
+        .filter-btn:hover,
+        .filter-btn.active {
+            background: #FFB81C;
+            color: #1A3F2C;
+        }
+
+        .certificates-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+            gap: 20px;
+            width: 100%;
+        }
+
+        .cert-card {
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+            cursor: pointer;
+            transition: transform 0.2s;
+            border: 1px solid #FFB81C;
+        }
+
+        .cert-card:hover {
+            transform: translateY(-6px);
+            box-shadow: 0 15px 30px rgba(255,184,28,0.3);
+        }
+
+        .cert-header {
+            background: #1A3F2C;
+            color: white;
+            padding: 15px;
+            border-bottom: 3px solid #FFB81C;
+        }
+
+        .cert-header h3 {
+            color: #FFB81C;
+            margin-bottom: 5px;
+        }
+
+        .cert-preview {
+            padding: 15px;
+            background: #F5F5F5;
+        }
+
+        .preview-row {
+            display: flex;
+            justify-content: space-between;
+            margin: 8px 0;
+        }
+
+        .preview-label {
+            color: #1A3F2C;
+            font-weight: 600;
+        }
+
+        .preview-value {
+            color: #333;
+            text-align: right;
+            max-width: 60%;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 0.8em;
+            font-weight: 600;
+            margin-top: 10px;
+        }
+
+        .status-valid {
+            background: #1A3F2C;
+            color: white;
+            border: 1px solid #FFB81C;
+        }
+
+        .status-expiring {
+            background: #FFB81C;
+            color: #1A3F2C;
+        }
+
+        .status-expired {
+            background: #8B0000;
+            color: white;
+        }
+
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(26,63,44,0.95);
+            z-index: 1000;
+            overflow-y: auto;
+            padding: 20px;
+        }
+
+        .modal-overlay.active {
+            display: block;
+        }
+
+        .modal-container {
+            min-height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 15px;
+            max-width: 1200px;
+            width: 95%;
+            margin: 20px auto;
+            border: 3px solid #FFB81C;
+        }
+
+        .modal-header {
+            background: #1A3F2C;
+            color: white;
+            padding: 20px;
+            border-radius: 12px 12px 0 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 3px solid #FFB81C;
+        }
+
+        .modal-header h2 {
+            color: #FFB81C;
+        }
+
+        .close-btn {
+            background: none;
+            border: none;
+            color: #FFB81C;
+            font-size: 30px;
+            cursor: pointer;
+        }
+
+        .modal-body {
+            padding: 30px;
+            display: grid;
+            grid-template-columns: 1fr 1.3fr;
+            gap: 30px;
+        }
+
+        .modal-image-section {
+            background: #f5f5f5;
+            border-radius: 8px;
+            padding: 10px;
+            min-height: 400px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-image {
+            max-width: 100%;
+            max-height: 60vh;
+            object-fit: contain;
+            border-radius: 8px;
+            border: 2px solid #FFB81C;
+        }
+
+        .modal-info {
+            max-height: 70vh;
+            overflow-y: auto;
+            padding-right: 10px;
+        }
+
+        .info-row {
+            display: grid;
+            grid-template-columns: 140px 1fr;
+            gap: 10px;
+            padding: 8px 0;
+            border-bottom: 1px solid #FFB81C;
+        }
+
+        .info-label {
+            font-weight: bold;
+            color: #1A3F2C;
+        }
+
+        .info-value {
+            color: #333;
+            word-break: break-word;
+        }
+
+        .serial-number-modal {
+            white-space: pre-line;
+            background: #F5F5F5;
+            padding: 10px;
+            border-radius: 5px;
+            font-family: monospace;
+            border-left: 3px solid #FFB81C;
+        }
+
+        .loading, .error, .no-results {
+            text-align: center;
+            color: white;
+            font-size: 18px;
+            grid-column: 1 / -1;
+            padding: 50px;
+        }
+
+        @media (max-width: 768px) {
+            .modal-body {
+                grid-template-columns: 1fr;
+            }
+            .info-row {
+                grid-template-columns: 120px 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="logo">
+        <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='80' viewBox='0 0 200 80'%3E%3Crect width='200' height='80' fill='%231A3F2C'/%3E%3Ctext x='20' y='48' font-family='Arial' font-size='20' fill='%23FFB81C' font-weight='bold'%3EBaker Hughes%3C/text%3E%3C/svg%3E" 
+             alt="Baker Hughes Logo">
+    </div>
+
+    <div class="content-wrapper">
+        <div class="header">
+            <h1>BAKER HUGHES CERTIFICATE DATABASE</h1>
+            <div class="stats" id="stats">
+                <div class="stat-card"><div class="stat-number" id="totalCount">0</div><div>Total</div></div>
+                <div class="stat-card"><div class="stat-number" id="validCount">0</div><div>Valid</div></div>
+                <div class="stat-card"><div class="stat-number" id="expiringCount">0</div><div>Expiring Soon</div></div>
+                <div class="stat-card"><div class="stat-number" id="expiredCount">0</div><div>Expired</div></div>
+            </div>
+        </div>
+
+        <div class="search-box">
+            <input type="text" id="searchInput" placeholder="🔍 Search by number, type, report...">
+        </div>
+
+        <div class="filters">
+            <button class="filter-btn active" data-filter="all">All</button>
+            <button class="filter-btn" data-filter="valid">Valid</button>
+            <button class="filter-btn" data-filter="expiring">Expiring Soon</button>
+            <button class="filter-btn" data-filter="expired">Expired</button>
+        </div>
+
+        <div id="certificatesContainer" class="certificates-grid">
+            <div class="loading">Loading certificates...</div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="certificateModal">
+        <div class="modal-container">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>Certificate Details</h2>
+                    <button class="close-btn" onclick="closeModal()">&times;</button>
+                </div>
+                <div class="modal-body" id="modalBody"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ==================== CONFIGURATION ====================
+        // REPLACE THIS WITH YOUR ACTUAL FILE ID AFTER UPLOADING
+        const SQL_FILE_ID = 'YOUR_SQL_FILE_ID_HERE';  // e.g., '1abc123def456ghi789jkl'
+        const API_KEY = 'AIzaSyDDL96NNpQtarhRjtaHtN1h-x2BMgFD1U4';
+        
+        // Direct download URL for the SQL file
+        const DATA_URL = `https://www.googleapis.com/drive/v3/files/${SQL_FILE_ID}?key=${API_KEY}&alt=media`;
+
+        // ==================== GLOBAL VARIABLES ====================
+        let allCertificates = [];
+        let currentFilter = 'all';
+        let currentSearch = '';
+
+        // ==================== HELPER FUNCTIONS ====================
+        function formatDate(dateString) {
+            if (!dateString) return '-';
+            try {
+                const date = new Date(dateString);
+                return date.toLocaleDateString('en-US', {
+                    year: 'numeric',
+                    month: 'short',
+                    day: 'numeric'
+                });
+            } catch {
+                return dateString;
+            }
+        }
+
+        function getStatus(cert) {
+            const nextDate = cert['date_of_next_inspection'] ? new Date(cert['date_of_next_inspection']) : null;
+            if (!nextDate) return 'valid';
+
+            const now = new Date();
+            const daysLeft = Math.ceil((nextDate - now) / (1000 * 60 * 60 * 24));
+
+            if (daysLeft < 0) return 'expired';
+            if (daysLeft <= 30) return 'expiring';
+            return 'valid';
+        }
+
+        function getStatusText(cert) {
+            const status = getStatus(cert);
+            return {
+                'valid': 'Valid',
+                'expiring': 'Expiring Soon',
+                'expired': 'Expired'
+            }[status];
+        }
+
+        // ==================== PARSE SQL DATA ====================
+        function parseSQLData(sqlText) {
+            const certificates = [];
+            
+            // Extract INSERT statements for certificates
+            const insertRegex = /INSERT\s+INTO\s+certificates\s*\([^)]+\)\s*VALUES\s*\(([^;]+)\)/gi;
+            let match;
+            
+            while ((match = insertRegex.exec(sqlText)) !== null) {
+                const valuesStr = match[1];
+                // Split by '),(' to get individual value groups
+                const valueGroups = valuesStr.split(/\),\s*\(/);
+                
+                valueGroups.forEach(group => {
+                    // Clean up the group
+                    group = group.replace(/^\(|\)$/g, '');
+                    
+                    // Parse values (this is simplified - assumes comma-separated with quotes)
+                    const values = [];
+                    let current = '';
+                    let inQuotes = false;
+                    
+                    for (let i = 0; i < group.length; i++) {
+                        const char = group[i];
+                        if (char === "'" && (i === 0 || group[i-1] !== '\\')) {
+                            inQuotes = !inQuotes;
+                            current += char;
+                        } else if (char === ',' && !inQuotes) {
+                            values.push(current.trim());
+                            current = '';
+                        } else {
+                            current += char;
+                        }
+                    }
+                    values.push(current.trim());
+                    
+                    // Clean up values
+                    const cleanValues = values.map(v => {
+                        v = v.replace(/^'|'$/g, ''); // Remove surrounding quotes
+                        v = v.replace(/\\'/g, "'");   // Replace escaped quotes
+                        v = v.replace(/\\n/g, '\n');   // Replace escaped newlines
+                        return v === 'NULL' ? null : v;
+                    });
+                    
+                    if (cleanValues.length >= 13) {
+                        certificates.push({
+                            'ordinary_number': cleanValues[1],
+                            'type': cleanValues[2],
+                            'id_number': cleanValues[3],
+                            'description': cleanValues[4],
+                            'serial_number': cleanValues[5],
+                            'date_of_inspection': cleanValues[6],
+                            'date_of_next_inspection': cleanValues[7],
+                            'location_of_inspection': cleanValues[8],
+                            'serviced_performed': cleanValues[9],
+                            'inspected_by': cleanValues[10],
+                            'report_number': cleanValues[11],
+                            'po_number': cleanValues[12],
+                            'scanned_cert': cleanValues[13]
+                        });
+                    }
+                });
+            }
+            
+            return certificates;
+        }
+
+        // ==================== LOAD DATA ====================
+        async function loadCertificates() {
+            const container = document.getElementById('certificatesContainer');
+            
+            try {
+                console.log('Loading data from Google Drive...');
+                
+                const response = await fetch(DATA_URL);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const text = await response.text();
+                console.log('Data loaded, length:', text.length);
+                
+                // Parse SQL to extract certificates
+                allCertificates = parseSQLData(text);
+                
+                if (!allCertificates || allCertificates.length === 0) {
+                    throw new Error('No certificates found in SQL file');
+                }
+                
+                console.log(`Loaded ${allCertificates.length} certificates`);
+                updateStats();
+                displayCertificates();
+                
+            } catch (error) {
+                console.error('Error loading data:', error);
+                container.innerHTML = `
+                    <div class="error">
+                        ❌ Error loading data: ${error.message}<br>
+                        <br>
+                        <strong>Please check:</strong><br>
+                        1. SQL file is shared as "Anyone with link"<br>
+                        2. File ID is correct: ${SQL_FILE_ID}<br>
+                        3. API key is valid<br>
+                        <br>
+                        Using sample data for demonstration.
+                    </div>`;
+                loadSampleData();
+            }
+        }
+
+        function loadSampleData() {
+            allCertificates = [
+                {
+                    "ordinary_number": "1",
+                    "type": "INJECTOR TRANSPORT BASKET",
+                    "id_number": "PPG71507",
+                    "serial_number": null,
+                    "date_of_inspection": "2025-12-24",
+                    "date_of_next_inspection": "2026-06-24",
+                    "location_of_inspection": "Turkmenistan - Hazar - Base",
+                    "serviced_performed": "Lifting inspection - visual/mpi",
+                    "inspected_by": "YOKARY HILLI HYZMAT",
+                    "report_number": "YHH-BH-IR-25-747",
+                    "po_number": "9000828597",
+                    "scanned_cert": null
+                }
+            ];
+            updateStats();
+            displayCertificates();
+        }
+
+        function updateStats() {
+            let valid = 0, expiring = 0, expired = 0;
+            
+            allCertificates.forEach(cert => {
+                const status = getStatus(cert);
+                if (status === 'valid') valid++;
+                else if (status === 'expiring') expiring++;
+                else if (status === 'expired') expired++;
+            });
+
+            document.getElementById('totalCount').textContent = allCertificates.length;
+            document.getElementById('validCount').textContent = valid;
+            document.getElementById('expiringCount').textContent = expiring;
+            document.getElementById('expiredCount').textContent = expired;
+        }
+
+        function filterCertificates() {
+            return allCertificates.filter(cert => {
+                if (currentFilter !== 'all' && getStatus(cert) !== currentFilter) {
+                    return false;
+                }
+
+                if (currentSearch) {
+                    const searchLower = currentSearch.toLowerCase();
+                    const searchableFields = [
+                        cert.ordinary_number,
+                        cert.type,
+                        cert.id_number,
+                        cert.serial_number,
+                        cert.report_number,
+                        cert.po_number
+                    ].map(f => (f || '').toString().toLowerCase());
+                    
+                    return searchableFields.some(field => field.includes(searchLower));
+                }
+                
+                return true;
+            });
+        }
+
+        function displayCertificates() {
+            const container = document.getElementById('certificatesContainer');
+            const filtered = filterCertificates();
+
+            if (filtered.length === 0) {
+                container.innerHTML = '<div class="no-results">🔍 No certificates found</div>';
+                return;
+            }
+
+            container.innerHTML = filtered.map(cert => {
+                const status = getStatus(cert);
+                const statusClass = {
+                    'valid': 'status-valid',
+                    'expiring': 'status-expiring',
+                    'expired': 'status-expired'
+                }[status];
+                
+                const nextDate = cert.date_of_next_inspection ? formatDate(cert.date_of_next_inspection) : 'Not set';
+
+                return `
+                    <div class="cert-card" onclick='showCertificateDetails(${JSON.stringify(cert).replace(/'/g, "\\'")})'>
+                        <div class="cert-header">
+                            <h3>${cert.type || 'Unknown Type'}</h3>
+                            <p>ID: ${cert.id_number || 'N/A'}</p>
+                        </div>
+                        <div class="cert-preview">
+                            <div class="preview-row">
+                                <span class="preview-label">Ordinary #:</span>
+                                <span class="preview-value">${cert.ordinary_number || '-'}</span>
+                            </div>
+                            <div class="preview-row">
+                                <span class="preview-label">Next Inspection:</span>
+                                <span class="preview-value">${nextDate}</span>
+                            </div>
+                            <div class="preview-row">
+                                <span class="preview-label">Report #:</span>
+                                <span class="preview-value">${cert.report_number || '-'}</span>
+                            </div>
+                            <span class="status-badge ${statusClass}">${getStatusText(cert)}</span>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function showCertificateDetails(cert) {
+            const modal = document.getElementById('certificateModal');
+            const modalBody = document.getElementById('modalBody');
+            
+            const serialNumber = (cert.serial_number || '-').replace(/\\r\\n/g, '<br>').replace(/\n/g, '<br>');
+            
+            modalBody.innerHTML = `
+                <div class="modal-image-section">
+                    <div style="padding: 50px; background: #f5f5f5; border-radius: 8px; text-align: center;">
+                        <div style="font-size: 3em; margin-bottom: 10px;">📄</div>
+                        <div>Certificate Scan: ${cert.scanned_cert || 'Not available'}</div>
+                    </div>
+                </div>
+                <div class="modal-info">
+                    <div class="info-row">
+                        <span class="info-label">Ordinary number:</span>
+                        <span class="info-value">${cert.ordinary_number || '-'}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Type:</span>
+                        <span class="info-value">${cert.type || '-'}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">ID number:</span>
+                        <span class="info-value">${cert.id_number || '-'}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Serial number:</span>
+                        <span class="info-value"><div class="serial-number-modal">${serialNumber}</div></span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Description:</span>
+                        <span class="info-value">${cert.description || '-'}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Date of inspection:</span>
+                        <span class="info-value">${formatDate(cert.date_of_inspection)}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Date of next inspection:</span>
+                        <span class="info-value">${formatDate(cert.date_of_next_inspection)}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Location:</span>
+                        <span class="info-value">${cert.location_of_inspection || '-'}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Serviced performed:</span>
+                        <span class="info-value">${cert.serviced_performed || '-'}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Inspected by:</span>
+                        <span class="info-value">${cert.inspected_by || '-'}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Report #:</span>
+                        <span class="info-value">${cert.report_number || '-'}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">PO number:</span>
+                        <span class="info-value">${cert.po_number || '-'}</span>
+                    </div>
+                </div>
+            `;
+            
+            modal.classList.add('active');
+            document.body.classList.add('modal-open');
+        }
+
+        function closeModal() {
+            document.getElementById('certificateModal').classList.remove('active');
+            document.body.classList.remove('modal-open');
+        }
+
+        // ==================== EVENT LISTENERS ====================
+        document.getElementById('searchInput').addEventListener('input', (e) => {
+            currentSearch = e.target.value;
+            displayCertificates();
+        });
+
+        document.querySelectorAll('.filter-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+                e.target.classList.add('active');
+                currentFilter = e.target.dataset.filter;
+                displayCertificates();
+            });
+        });
+
+        document.getElementById('certificateModal').addEventListener('click', (e) => {
+            if (e.target === document.getElementById('certificateModal')) {
+                closeModal();
+            }
+        });
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                closeModal();
+            }
+        });
+
+        // ==================== INITIALIZE ====================
+        loadCertificates();
+    </script>
+</body>
+</html>
