@@ -390,13 +390,12 @@
     </div>
 
     <script>
-        // ==================== CONFIGURATION ====================
-        // REPLACE THIS WITH YOUR ACTUAL FILE ID AFTER UPLOADING
-        const SQL_FILE_ID = 'https://github.com/ruabromovich1995-web/certificate-database/blob/main/baker_hughes_certificates.sql.sql';  // e.g., '1abc123def456ghi789jkl'
-        const API_KEY = 'AIzaSyDDL96NNpQtarhRjtaHtN1h-x2BMgFD1U4';
+        // ==================== CORRECT CONFIGURATION FOR GITHUB ====================
+        // Your GitHub raw URL for the SQL file
+        const GITHUB_RAW_URL = 'https://raw.githubusercontent.com/ruabromovich1995-web/certificate-database/main/baker_hughes_certificates.sql.sql';
         
-        // Direct download URL for the SQL file
-        const DATA_URL = `https://www.googleapis.com/drive/v3/files/${1abc123def456ghi789jkl}?key=${AIzaSyDDL96NNpQtarhRjtaHtN1h-x2BMgFD1U4}&alt=media`;
+        // Use GitHub raw URL instead of Google Drive
+        const DATA_URL = GITHUB_RAW_URL;
 
         // ==================== GLOBAL VARIABLES ====================
         let allCertificates = [];
@@ -456,7 +455,7 @@
                     // Clean up the group
                     group = group.replace(/^\(|\)$/g, '');
                     
-                    // Parse values (this is simplified - assumes comma-separated with quotes)
+                    // Parse values
                     const values = [];
                     let current = '';
                     let inQuotes = false;
@@ -477,27 +476,27 @@
                     
                     // Clean up values
                     const cleanValues = values.map(v => {
-                        v = v.replace(/^'|'$/g, ''); // Remove surrounding quotes
-                        v = v.replace(/\\'/g, "'");   // Replace escaped quotes
-                        v = v.replace(/\\n/g, '\n');   // Replace escaped newlines
+                        v = v.replace(/^'|'$/g, '');
+                        v = v.replace(/\\'/g, "'");
+                        v = v.replace(/\\n/g, '\n');
                         return v === 'NULL' ? null : v;
                     });
                     
                     if (cleanValues.length >= 13) {
                         certificates.push({
-                            'ordinary_number': cleanValues[1],
-                            'type': cleanValues[2],
-                            'id_number': cleanValues[3],
-                            'description': cleanValues[4],
-                            'serial_number': cleanValues[5],
-                            'date_of_inspection': cleanValues[6],
-                            'date_of_next_inspection': cleanValues[7],
-                            'location_of_inspection': cleanValues[8],
-                            'serviced_performed': cleanValues[9],
-                            'inspected_by': cleanValues[10],
-                            'report_number': cleanValues[11],
-                            'po_number': cleanValues[12],
-                            'scanned_cert': cleanValues[13]
+                            'ordinary_number': cleanValues[0]?.replace(/'/g, '') || '',
+                            'type': cleanValues[1]?.replace(/'/g, '') || '',
+                            'id_number': cleanValues[2]?.replace(/'/g, '') || null,
+                            'description': cleanValues[3] === 'NULL' ? null : cleanValues[3]?.replace(/'/g, ''),
+                            'serial_number': cleanValues[4] === 'NULL' ? null : cleanValues[4]?.replace(/'/g, ''),
+                            'date_of_inspection': cleanValues[5]?.replace(/'/g, '') || null,
+                            'date_of_next_inspection': cleanValues[6]?.replace(/'/g, '') || null,
+                            'location_of_inspection': cleanValues[7]?.replace(/'/g, '') || null,
+                            'serviced_performed': cleanValues[8]?.replace(/'/g, '') || null,
+                            'inspected_by': cleanValues[9]?.replace(/'/g, '') || null,
+                            'report_number': cleanValues[10]?.replace(/'/g, '') || null,
+                            'po_number': cleanValues[11]?.replace(/'/g, '') || null,
+                            'scanned_cert': cleanValues[12]?.replace(/'/g, '') || null
                         });
                     }
                 });
@@ -511,7 +510,7 @@
             const container = document.getElementById('certificatesContainer');
             
             try {
-                console.log('Loading data from Google Drive...');
+                console.log('Loading data from GitHub...', DATA_URL);
                 
                 const response = await fetch(DATA_URL);
                 
@@ -540,9 +539,9 @@
                         ❌ Error loading data: ${error.message}<br>
                         <br>
                         <strong>Please check:</strong><br>
-                        1. SQL file is shared as "Anyone with link"<br>
-                        2. File ID is correct: ${SQL_FILE_ID}<br>
-                        3. API key is valid<br>
+                        1. File exists at: ${DATA_URL}<br>
+                        2. File is publicly accessible<br>
+                        3. File has the correct SQL format<br>
                         <br>
                         Using sample data for demonstration.
                     </div>`;
